@@ -1,4 +1,3 @@
-const oracledb = require('oracledb');
 const { getConnection } = require('../db/connection');
 
 exports.getAllMedicines = async (req, res) => {
@@ -8,16 +7,15 @@ exports.getAllMedicines = async (req, res) => {
     let result;
     try {
       // Try the optimized view first
-      result = await conn.execute(
+      result = await conn.query(
         `SELECT medicine_id, name, category, unit, quantity, min_quantity, price,
                 expiry_date, supplier, stock_status
-         FROM medicine_inventory_v ORDER BY name`,
-        [], { outFormat: oracledb.OUT_FORMAT_OBJECT }
+         FROM medicine_inventory_v ORDER BY name`
       );
     } catch (viewErr) {
-      // View not created yet — fall back to base table with inline CASE
+      // View not created yet - fall back to base table with inline CASE
       console.warn('medicine_inventory_v not found, falling back to medicines table:', viewErr.message);
-      result = await conn.execute(
+      result = await conn.query(
         `SELECT medicine_id, name, category, unit, quantity, min_quantity, price,
                 expiry_date, supplier,
                 CASE
@@ -25,8 +23,7 @@ exports.getAllMedicines = async (req, res) => {
                   WHEN quantity <= min_quantity THEN 'low'
                   ELSE 'ok'
                 END as stock_status
-         FROM medicines ORDER BY name`,
-        [], { outFormat: oracledb.OUT_FORMAT_OBJECT }
+         FROM medicines ORDER BY name`
       );
     }
     res.json(result.rows);
@@ -34,7 +31,7 @@ exports.getAllMedicines = async (req, res) => {
     console.error('getAllMedicines error:', err.message);
     res.status(500).json({ message: err.message });
   } finally {
-    if (conn) await conn.close();
+    if (conn) conn.release();
   }
 };
 
@@ -42,16 +39,15 @@ exports.getLowStock = async (req, res) => {
   let conn;
   try {
     conn = await getConnection();
-    const result = await conn.execute(
+    const result = await conn.query(
       `SELECT medicine_id, name, category, quantity, min_quantity, expiry_date
-       FROM medicines WHERE quantity <= min_quantity ORDER BY quantity ASC`,
-      [], { outFormat: oracledb.OUT_FORMAT_OBJECT }
+       FROM medicines WHERE quantity <= min_quantity ORDER BY quantity ASC`
     );
     res.json(result.rows);
   } catch (err) {
     res.status(500).json({ message: err.message });
   } finally {
-    if (conn) await conn.close();
+    if (conn) conn.release();
   }
 };
 
@@ -60,17 +56,16 @@ exports.addMedicine = async (req, res) => {
   let conn;
   try {
     conn = await getConnection();
-    await conn.execute(
+    await conn.query(
       `INSERT INTO medicines (name, category, unit, quantity, min_quantity, price, expiry_date, supplier)
-       VALUES (:name, :category, :unit, :quantity, :min_quantity, :price, TO_DATE(:expiry_date,'YYYY-MM-DD'), :supplier)`,
-      { name, category, unit, quantity, min_quantity, price, expiry_date, supplier },
-      { autoCommit: true }
+       VALUES ($1, $2, $3, $4, $5, $6, $7::date, $8)`,
+      [name, category, unit, quantity, min_quantity, price, expiry_date, supplier]
     );
     res.status(201).json({ message: 'Medicine added successfully' });
   } catch (err) {
     res.status(500).json({ message: err.message });
   } finally {
-    if (conn) await conn.close();
+    if (conn) conn.release();
   }
 };
 
@@ -79,16 +74,15 @@ exports.updateStock = async (req, res) => {
   let conn;
   try {
     conn = await getConnection();
-    await conn.execute(
-      `UPDATE medicines SET quantity = quantity + :quantity WHERE medicine_id = :id`,
-      { quantity, id: req.params.id },
-      { autoCommit: true }
+    await conn.query(
+      `UPDATE medicines SET quantity = quantity + $1 WHERE medicine_id = $2`,
+      [quantity, req.params.id]
     );
     res.json({ message: 'Stock updated successfully' });
   } catch (err) {
     res.status(500).json({ message: err.message });
   } finally {
-    if (conn) await conn.close();
+    if (conn) conn.release();
   }
 };
 
@@ -96,7 +90,7 @@ exports.getPrescriptions = async (req, res) => {
   let conn;
   try {
     conn = await getConnection();
-    const result = await conn.execute(
+    const result = await conn.query(
       `SELECT pr.prescription_id, pr.quantity, pr.dosage, pr.duration, pr.dispensed, pr.prescribed_at,
               p.full_name as patient_name,
               s.full_name as doctor_name,
@@ -105,14 +99,13 @@ exports.getPrescriptions = async (req, res) => {
        JOIN patients p ON pr.patient_id = p.patient_id
        JOIN staff s ON pr.doctor_id = s.staff_id
        JOIN medicines m ON pr.medicine_id = m.medicine_id
-       ORDER BY pr.prescribed_at DESC`,
-      [], { outFormat: oracledb.OUT_FORMAT_OBJECT }
+       ORDER BY pr.prescribed_at DESC`
     );
     res.json(result.rows);
   } catch (err) {
     res.status(500).json({ message: err.message });
   } finally {
-    if (conn) await conn.close();
+    if (conn) conn.release();
   }
 };
 
@@ -121,19 +114,15 @@ exports.addPrescription = async (req, res) => {
   let conn;
   try {
     conn = await getConnection();
-    await conn.execute(
-      `BEGIN
-         sp_add_prescription(:patient_id, :doctor_id, :medicine_id, :quantity, :dosage, :duration);
-       END;`,
-      { patient_id, doctor_id, medicine_id, quantity, dosage, duration },
-      { autoCommit: true }
+    await conn.query(
+      `CALL sp_add_prescription($1, $2, $3, $4, $5, $6)`,
+      [patient_id, doctor_id, medicine_id, quantity, dosage, duration]
     );
     res.status(201).json({ message: 'Prescription added and stock updated' });
   } catch (err) {
-    const statusCode = err.message.includes('ORA-20') ? 400 : 500;
-    res.status(statusCode).json({ message: err.message });
+    res.status(500).json({ message: err.message });
   } finally {
-    if (conn) await conn.close();
+    if (conn) conn.release();
   }
 };
 
@@ -142,18 +131,17 @@ exports.updateMedicine = async (req, res) => {
   let conn;
   try {
     conn = await getConnection();
-    await conn.execute(
-      `UPDATE medicines SET name=:name, category=:category, unit=:unit, quantity=:quantity,
-       min_quantity=:min_quantity, price=:price, expiry_date=TO_DATE(:expiry_date,'YYYY-MM-DD'), supplier=:supplier
-       WHERE medicine_id=:id`,
-      { name, category, unit, quantity, min_quantity, price, expiry_date, supplier, id: req.params.id },
-      { autoCommit: true }
+    await conn.query(
+      `UPDATE medicines SET name=$1, category=$2, unit=$3, quantity=$4,
+       min_quantity=$5, price=$6, expiry_date=$7::date, supplier=$8
+       WHERE medicine_id=$9`,
+      [name, category, unit, quantity, min_quantity, price, expiry_date, supplier, req.params.id]
     );
     res.json({ message: 'Medicine updated successfully' });
   } catch (err) {
     res.status(500).json({ message: err.message });
   } finally {
-    if (conn) await conn.close();
+    if (conn) conn.release();
   }
 };
 
@@ -161,15 +149,14 @@ exports.deleteMedicine = async (req, res) => {
   let conn;
   try {
     conn = await getConnection();
-    await conn.execute(
-      `DELETE FROM medicines WHERE medicine_id = :id`,
-      { id: req.params.id },
-      { autoCommit: true }
+    await conn.query(
+      `DELETE FROM medicines WHERE medicine_id = $1`,
+      [req.params.id]
     );
     res.json({ message: 'Medicine deleted' });
   } catch (err) {
     res.status(500).json({ message: err.message });
   } finally {
-    if (conn) await conn.close();
+    if (conn) conn.release();
   }
 };

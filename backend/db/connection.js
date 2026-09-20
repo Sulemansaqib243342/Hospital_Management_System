@@ -1,14 +1,9 @@
-const oracledb = require('oracledb');
+const { Pool } = require('pg');
 
-const dbConfig = {
-  user: process.env.DB_USER || 'hms_user',
-  password: process.env.DB_PASSWORD || 'hms_password',
-  connectString: process.env.DB_CONNECT || 'localhost:1521/ORCL',
-};
-
-async function getConnection() {
-  return await oracledb.getConnection(dbConfig);
-}
+const pool = new Pool({
+  connectionString: process.env.POSTGRES_URL || process.env.DB_CONNECT || 'postgresql://postgres:postgres@localhost:5432/hms',
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+});
 
 let poolPromise = null;
 
@@ -17,20 +12,11 @@ async function initPool() {
 
   poolPromise = (async () => {
     try {
-      const existingPool = oracledb.getPool();
-      if (existingPool) return existingPool;
-    } catch (e) {
-      // Pool not yet created, proceed to create
-    }
-
-    try {
-      await oracledb.createPool({
-        ...dbConfig,
-        poolMin: 0,
-        poolMax: 10,
-        poolIncrement: 1,
-      });
-      console.log('Oracle DB connection pool created');
+      // Test connection
+      const client = await pool.connect();
+      client.release();
+      console.log('PostgreSQL connection pool created');
+      return pool;
     } catch (err) {
       poolPromise = null;
       throw err;
@@ -40,4 +26,9 @@ async function initPool() {
   return poolPromise;
 }
 
-module.exports = { getConnection, initPool };
+async function getConnection() {
+  await initPool();
+  return await pool.connect();
+}
+
+module.exports = { getConnection, initPool, pool };

@@ -1,110 +1,110 @@
 -- =============================================
--- HOSPITAL MANAGEMENT SYSTEM - ORACLE SCHEMA
+-- HOSPITAL MANAGEMENT SYSTEM - POSTGRESQL SCHEMA
 -- =============================================
 
 -- 1. DEPARTMENTS
 CREATE TABLE departments (
-  dept_id     NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  dept_name   VARCHAR2(100) NOT NULL,
-  description VARCHAR2(255),
-  created_at  DATE DEFAULT SYSDATE
+  dept_id     SERIAL PRIMARY KEY,
+  dept_name   VARCHAR(100) NOT NULL,
+  description VARCHAR(255),
+  created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 2. STAFF / DOCTORS
 CREATE TABLE staff (
-  staff_id    NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  full_name   VARCHAR2(100) NOT NULL,
-  email       VARCHAR2(100) UNIQUE NOT NULL,
-  password    VARCHAR2(255) NOT NULL,
-  phone       VARCHAR2(20),
-  role        VARCHAR2(30) CHECK (role IN ('doctor','nurse','admin','pharmacist')),
-  designation VARCHAR2(100),
-  dept_id     NUMBER REFERENCES departments(dept_id),
-  shift       VARCHAR2(20) CHECK (shift IN ('morning','evening','night')),
-  status      VARCHAR2(20) DEFAULT 'active',
-  created_at  DATE DEFAULT SYSDATE
+  staff_id    SERIAL PRIMARY KEY,
+  full_name   VARCHAR(100) NOT NULL,
+  email       VARCHAR(100) UNIQUE NOT NULL,
+  password    VARCHAR(255) NOT NULL,
+  phone       VARCHAR(20),
+  role        VARCHAR(30) CHECK (role IN ('doctor','nurse','admin','pharmacist')),
+  designation VARCHAR(100),
+  dept_id     INTEGER REFERENCES departments(dept_id),
+  shift       VARCHAR(20) CHECK (shift IN ('morning','evening','night')),
+  status      VARCHAR(20) DEFAULT 'active',
+  created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 3. PATIENTS
 CREATE TABLE patients (
-  patient_id  NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  full_name   VARCHAR2(100) NOT NULL,
+  patient_id  SERIAL PRIMARY KEY,
+  full_name   VARCHAR(100) NOT NULL,
   dob         DATE,
-  gender      VARCHAR2(10) CHECK (gender IN ('male','female','other')),
-  blood_group VARCHAR2(5),
-  phone       VARCHAR2(20),
-  email       VARCHAR2(100),
-  address     VARCHAR2(255),
-  emergency_contact VARCHAR2(100),
-  created_at  DATE DEFAULT SYSDATE
+  gender      VARCHAR(10) CHECK (gender IN ('male','female','other')),
+  blood_group VARCHAR(5),
+  phone       VARCHAR(20),
+  email       VARCHAR(100),
+  address     VARCHAR(255),
+  emergency_contact VARCHAR(100),
+  created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 4. ADMISSIONS
 CREATE TABLE admissions (
-  admission_id   NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  patient_id     NUMBER REFERENCES patients(patient_id),
-  doctor_id      NUMBER REFERENCES staff(staff_id),
-  dept_id        NUMBER REFERENCES departments(dept_id),
-  ward           VARCHAR2(50),
-  bed_number     VARCHAR2(10),
-  admission_date DATE DEFAULT SYSDATE,
-  discharge_date DATE,
-  condition      VARCHAR2(255),
-  status         VARCHAR2(20) DEFAULT 'admitted' CHECK (status IN ('admitted','discharged','critical','stable','monitoring'))
+  admission_id   SERIAL PRIMARY KEY,
+  patient_id     INTEGER REFERENCES patients(patient_id),
+  doctor_id      INTEGER REFERENCES staff(staff_id),
+  dept_id        INTEGER REFERENCES departments(dept_id),
+  ward           VARCHAR(50),
+  bed_number     VARCHAR(10),
+  admission_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  discharge_date TIMESTAMP,
+  condition      VARCHAR(255),
+  status         VARCHAR(20) DEFAULT 'admitted' CHECK (status IN ('admitted','discharged','critical','stable','monitoring'))
 );
 
 -- 5. APPOINTMENTS
 CREATE TABLE appointments (
-  appt_id      NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  patient_id   NUMBER REFERENCES patients(patient_id),
-  doctor_id    NUMBER REFERENCES staff(staff_id),
-  dept_id      NUMBER REFERENCES departments(dept_id),
+  appt_id      SERIAL PRIMARY KEY,
+  patient_id   INTEGER REFERENCES patients(patient_id),
+  doctor_id    INTEGER REFERENCES staff(staff_id),
+  dept_id      INTEGER REFERENCES departments(dept_id),
   appt_date    DATE NOT NULL,
-  appt_time    VARCHAR2(10),
-  reason       VARCHAR2(255),
-  status       VARCHAR2(20) DEFAULT 'scheduled' CHECK (status IN ('scheduled','confirmed','completed','cancelled','missed')),
-  notes        VARCHAR2(500),
-  created_at   DATE DEFAULT SYSDATE
+  appt_time    VARCHAR(10),
+  reason       VARCHAR(255),
+  status       VARCHAR(20) DEFAULT 'scheduled' CHECK (status IN ('scheduled','confirmed','completed','cancelled','missed')),
+  notes        VARCHAR(500),
+  created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 6. MEDICINES
 CREATE TABLE medicines (
-  medicine_id  NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  name         VARCHAR2(100) NOT NULL,
-  category     VARCHAR2(50),
-  unit         VARCHAR2(20),
-  quantity     NUMBER DEFAULT 0,
-  min_quantity NUMBER DEFAULT 10,
-  price        NUMBER(10,2),
+  medicine_id  SERIAL PRIMARY KEY,
+  name         VARCHAR(100) NOT NULL,
+  category     VARCHAR(50),
+  unit         VARCHAR(20),
+  quantity     INTEGER DEFAULT 0,
+  min_quantity INTEGER DEFAULT 10,
+  price        NUMERIC(10,2),
   expiry_date  DATE,
-  supplier     VARCHAR2(100),
-  created_at   DATE DEFAULT SYSDATE
+  supplier     VARCHAR(100),
+  created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 7. PRESCRIPTIONS
 CREATE TABLE prescriptions (
-  prescription_id NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  patient_id      NUMBER REFERENCES patients(patient_id),
-  doctor_id       NUMBER REFERENCES staff(staff_id),
-  medicine_id     NUMBER REFERENCES medicines(medicine_id),
-  quantity        NUMBER,
-  dosage          VARCHAR2(100),
-  duration        VARCHAR2(50),
-  dispensed       NUMBER(1) DEFAULT 0,
-  prescribed_at   DATE DEFAULT SYSDATE
+  prescription_id SERIAL PRIMARY KEY,
+  patient_id      INTEGER REFERENCES patients(patient_id),
+  doctor_id       INTEGER REFERENCES staff(staff_id),
+  medicine_id     INTEGER REFERENCES medicines(medicine_id),
+  quantity        INTEGER,
+  dosage          VARCHAR(100),
+  duration        VARCHAR(50),
+  dispensed       SMALLINT DEFAULT 0,
+  prescribed_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 8. BILLING
 CREATE TABLE billing (
-  bill_id       NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  patient_id    NUMBER REFERENCES patients(patient_id),
-  admission_id  NUMBER REFERENCES admissions(admission_id),
-  total_amount  NUMBER(12,2),
-  paid_amount   NUMBER(12,2) DEFAULT 0,
-  payment_mode  VARCHAR2(30) CHECK (payment_mode IN ('cash','card','insurance','online')),
-  status        VARCHAR2(20) DEFAULT 'pending' CHECK (status IN ('pending','paid','partial','overdue')),
-  bill_date     DATE DEFAULT SYSDATE,
-  notes         VARCHAR2(255)
+  bill_id       SERIAL PRIMARY KEY,
+  patient_id    INTEGER REFERENCES patients(patient_id),
+  admission_id  INTEGER REFERENCES admissions(admission_id),
+  total_amount  NUMERIC(12,2),
+  paid_amount   NUMERIC(12,2) DEFAULT 0,
+  payment_mode  VARCHAR(30) CHECK (payment_mode IN ('cash','card','insurance','online')),
+  status        VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending','paid','partial','overdue')),
+  bill_date     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  notes         VARCHAR(255)
 );
 
 -- =============================================
@@ -117,12 +117,5 @@ INSERT INTO departments (dept_name, description) VALUES ('Pediatrics', 'Child he
 INSERT INTO departments (dept_name, description) VALUES ('Neurology', 'Brain and nervous system');
 INSERT INTO departments (dept_name, description) VALUES ('ICU', 'Intensive Care Unit');
 
-COMMIT;
-
-CREATE USER hms_user IDENTIFIED BY hms_password;
-GRANT CONNECT, RESOURCE, DBA TO hms_user;
-
 INSERT INTO staff (full_name, email, password, role)
 VALUES ('Admin User', 'sulemansaqib34917@gmail.com', '$2a$10$Z3eTlVSOVA1y8VRkg36dXOb7JLG39CE1nVvbuWIptL5VJgVVNs20m', 'admin');
-
-COMMIT;
