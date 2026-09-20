@@ -6,7 +6,11 @@ const { initPool } = require('./db/connection');
 
 const app = express();
 
-app.use(cors({ origin: /http:\/\/localhost:\d+/ }));
+const allowedOrigins = process.env.CLIENT_URL
+  ? [process.env.CLIENT_URL, /http:\/\/localhost:\d+/]
+  : [/\.vercel\.app$/, /http:\/\/localhost:\d+/];
+
+app.use(cors({ origin: allowedOrigins, credentials: true }));
 app.use(express.json());
 
 // Routes
@@ -18,6 +22,7 @@ app.use('/api/pharmacy', require('./routes/pharmacyRoutes'));
 app.use('/api/billing', require('./routes/billingRoutes'));
 
 app.get('/', (req, res) => res.json({ message: 'HMS API is running' }));
+app.get('/api', (req, res) => res.json({ message: 'HMS API is running' }));
 
 app.use((err, req, res, next) => {
   console.error(err.stack);
@@ -26,11 +31,15 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 5001;
 
-initPool()
-  .then(() => {
-    app.listen(PORT, () => console.log(`HMS Server running on http://localhost:${PORT}`));
-  })
-  .catch(err => {
-    console.error('Failed to connect to Oracle DB:', err);
-    process.exit(1);
-  });
+if (require.main === module) {
+  initPool()
+    .then(() => {
+      app.listen(PORT, () => console.log(`HMS Server running on http://localhost:${PORT}`));
+    })
+    .catch(err => {
+      console.error('Failed to connect to Oracle DB:', err);
+      process.exit(1);
+    });
+}
+
+module.exports = app;
