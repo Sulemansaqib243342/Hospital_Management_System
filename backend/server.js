@@ -24,6 +24,26 @@ app.use('/api/billing', require('./routes/billingRoutes'));
 app.get('/', (req, res) => res.json({ message: 'HMS API is running' }));
 app.get('/api', (req, res) => res.json({ message: 'HMS API is running' }));
 
+// Auto-initialize DB endpoint
+app.get('/api/init-db', async (req, res) => {
+  const fs = require('fs');
+  const path = require('path');
+  const { getConnection } = require('./db/connection');
+  let conn;
+  try {
+    conn = await getConnection();
+    const schemaSql = fs.readFileSync(path.join(__dirname, 'db', 'schema.sql'), 'utf8');
+    const plsqlSql = fs.readFileSync(path.join(__dirname, 'db', 'plsql_setup.sql'), 'utf8');
+    await conn.query(schemaSql);
+    await conn.query(plsqlSql);
+    res.json({ message: 'Database tables and functions created successfully!' });
+  } catch (err) {
+    res.status(500).json({ error: err.message, stack: err.stack });
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ message: 'Internal server error' });
