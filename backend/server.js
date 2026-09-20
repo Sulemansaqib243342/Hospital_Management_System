@@ -24,8 +24,12 @@ app.use('/api/billing', require('./routes/billingRoutes'));
 app.get('/', (req, res) => res.json({ message: 'HMS API is running' }));
 app.get('/api', (req, res) => res.json({ message: 'HMS API is running' }));
 
-// Auto-initialize DB endpoint
+// Auto-initialize DB endpoint (protected by INIT_SECRET)
 app.get('/api/init-db', async (req, res) => {
+  const secret = req.query.secret;
+  if (!secret || secret !== process.env.INIT_SECRET) {
+    return res.status(403).json({ message: 'Forbidden: Invalid or missing secret key.' });
+  }
   const fs = require('fs');
   const path = require('path');
   const { getConnection } = require('./db/connection');
@@ -38,7 +42,7 @@ app.get('/api/init-db', async (req, res) => {
     await conn.query(plsqlSql);
     res.json({ message: 'Database tables and functions created successfully!' });
   } catch (err) {
-    res.status(500).json({ error: err.message, stack: err.stack });
+    res.status(500).json({ error: err.message });
   } finally {
     if (conn) conn.release();
   }

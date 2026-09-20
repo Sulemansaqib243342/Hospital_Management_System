@@ -2,7 +2,7 @@
 
 [![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://reactjs.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)](https://nodejs.org/)
-[![Oracle](https://img.shields.io/badge/Oracle-F80000?style=for-the-badge&logo=oracle&logoColor=white)](https://www.oracle.com/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
 
 A premium, full-stack Hospital Management System designed for **SS Pharmaceuticals**. This application provides a comprehensive suite of tools for healthcare providers to manage patients, appointments, pharmacy inventory, and billing through a unified, secure dashboard.
@@ -16,8 +16,8 @@ A premium, full-stack Hospital Management System designed for **SS Pharmaceutica
 - 📂 **Patient Management** — Full CRUD operations for patient records and history.
 - 📅 **Smart Scheduling** — Efficient appointment booking and doctor availability tracking.
 - 💊 **Pharmacy Suite** — Inventory management with low-stock alerts and digital prescriptions.
-- 💳 **Billing & Invoicing** — Supports JazzCash, EasyPaisa, Sadapay, Online, and Insurance payment methods; status updates automatically.
-- 🏛️ **Oracle PL/SQL Optimization** — Business logic and validation offloaded to Database Views, Stored Procedures (using Cursors), and Triggers with robust PL/SQL Exception Handling.
+- 💳 **Billing & Invoicing** — Supports multiple payment methods; status updates automatically.
+- 🏛️ **PostgreSQL Optimization** — Business logic offloaded to Database Views, Stored Procedures, and Triggers.
 
 ---
 
@@ -25,9 +25,9 @@ A premium, full-stack Hospital Management System designed for **SS Pharmaceutica
 
 - **Frontend:** React 18, Vite, Tailwind CSS, React Router, Axios
 - **Backend:** Node.js, Express.js
-- **Database:** Oracle 19c (Relational) + PL/SQL (Stored Procedures, Views, Triggers, Cursors)
+- **Database:** PostgreSQL (Vercel Postgres)
 - **Security:** JWT + bcryptjs
-- **Icons:** Tabler Icons
+- **Deployment:** Vercel (Frontend + Backend + Database)
 
 ---
 
@@ -37,7 +37,7 @@ A premium, full-stack Hospital Management System designed for **SS Pharmaceutica
 hospital-hms/
 ├── backend/              # Node.js + Express API
 │   ├── controllers/      # Business logic
-│   ├── db/               # Oracle connection + schema.sql
+│   ├── db/               # PostgreSQL connection + schema.sql
 │   ├── middleware/       # JWT auth middleware
 │   ├── routes/           # API endpoints
 │   └── server.js         # Entry point
@@ -53,14 +53,9 @@ hospital-hms/
 
 ## ⚙️ Installation & Setup
 
-### 1. Database Setup (Oracle 19c)
-1. Open **SQL Developer** and connect to your instance.
-2. Run the schema script: `backend/db/schema.sql`.
-3. Compile the PL/SQL database objects (Views, Procedures, Cursors, Triggers, Exception Handlers): Run `backend/db/plsql_setup.sql`.
-4. Create the dedicated user:
-```sql
-CREATE USER hms_user IDENTIFIED BY hms_password;
-GRANT CONNECT, RESOURCE, DBA TO hms_user;
+### 1. Clone the repository
+```bash
+git clone https://github.com/Sulemansaqib243342/Hospital_Management_System.git
 ```
 
 ### 2. Backend Configuration
@@ -68,14 +63,14 @@ GRANT CONNECT, RESOURCE, DBA TO hms_user;
 cd backend
 npm install
 ```
-Create a `.env` file in the `backend` folder:
+Create a `.env` file in the `backend` folder (see `.env.example`):
 ```env
-DB_USER=hms_user
-DB_PASSWORD=hms_password
-DB_CONNECT=localhost:1521/ORCL
+POSTGRES_URL=your_vercel_postgres_connection_url
 JWT_SECRET=your_secure_secret_key
+CLIENT_URL=https://your-frontend.vercel.app
+INIT_SECRET=your_init_secret_key
 ```
-Run the server: `npm run dev`
+Run locally: `npm run dev`
 
 ### 3. Frontend Configuration
 ```bash
@@ -83,13 +78,17 @@ cd frontend
 npm install
 npm run dev
 ```
+Create a `.env` file in the `frontend` folder:
+```env
+VITE_API_BASE_URL=http://localhost:5002/api
+```
 Open [http://localhost:5173](http://localhost:5173) in your browser.
 
 ---
 
-## 🔑 Default Credentials
-- **Admin Login:** `sulemansaqib34917@gmail.com`
-- **Password:** `Admin@123`
+## 🔑 Default Login
+
+> ⚠️ **Security Note:** Default credentials are stored securely in Vercel Environment Variables. Contact the administrator for access.
 
 ---
 
